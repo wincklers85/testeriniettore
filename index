@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <title>Tester Iniettore – by Stephan Winckler</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Tester Iniettore a microcontrollore (ESP8266) con display OLED, profili benzina/diesel, controllo web, OTA update e grafico live.">
+  <meta name="author" content="Stephan Winckler">
+  <meta property="og:title" content="Tester Iniettore – by Stephan Winckler">
+  <meta property="og:description" content="Strumento compatto per testare iniettori diesel/benzina con peak&hold, profili, controllo web e OTA.">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB..."> <!-- opzionale -->
+  <link rel="icon" href="data:,">
+  <style>
+    :root{
+      --bg:#0b0f14; --fg:#e6edf3; --muted:#9fb0c7; --card:#101826; --border:#1b2533; --accent:#4fc3f7; --ok:#2ecc71; --warn:#ff6b6b;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    body.light{ --bg:#f7f8fb; --fg:#0b1220; --muted:#5b6578; --card:#ffffff; --border:#e2e8f0; --accent:#0a66c2; --ok:#2e7d32; --warn:#c62828; }
+    *{ box-sizing:border-box }
+    body{ margin:0; font-family:system-ui,Segoe UI,Roboto,Arial; background:var(--bg); color:var(--fg); line-height:1.55 }
+    a{ color:var(--accent); text-decoration:none }
+    header{ position:sticky; top:0; z-index:10; background:var(--bg); border-bottom:1px solid var(--border) }
+    .nav{ max-width:1100px; margin:0 auto; display:flex; align-items:center; gap:16px; padding:12px 16px }
+    .nav h1{ font-size:18px; margin:0 }
+    .nav .spacer{ flex:1 }
+    .btn, button{ padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:var(--card); color:var(--fg); cursor:pointer }
+    .btn.primary{ border-color:transparent; background:var(--accent); color:#031018; font-weight:600 }
+    .btn.ghost{ background:transparent }
+    .wrap{ max-width:1100px; margin:0 auto; padding:24px 16px }
+    .hero{ display:grid; grid-template-columns:1.2fr 1fr; gap:24px; align-items:center; padding:24px 0 }
+    .hero h2{ font-size:34px; margin:0 0 8px }
+    .hero p{ color:var(--muted); margin:0 0 16px }
+    .card{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px }
+    .grid{ display:grid; gap:16px }
+    .grid.cols-3{ grid-template-columns:repeat(3,1fr) }
+    .grid.cols-2{ grid-template-columns:repeat(2,1fr) }
+    .kpi{ display:flex; align-items:center; gap:10px; color:var(--muted) }
+    .mono{ font-family:var(--mono) }
+    section{ padding:28px 0 }
+    h3{ margin:0 0 12px; font-size:22px }
+    ul{ margin:0; padding-left:18px }
+    .tag{ display:inline-block; padding:4px 8px; border:1px solid var(--border); border-radius:999px; margin-right:6px; color:var(--muted); font-size:12px }
+    .footer{ border-top:1px solid var(--border); padding:18px 0; color:var(--muted) }
+    .row{ display:flex; gap:16px; flex-wrap:wrap }
+    .row > *{ flex:1 1 260px }
+    .svgwrap{ background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px }
+    .toc a{ display:inline-block; margin-right:10px; margin-bottom:6px }
+    .pill{ display:inline-block; padding:4px 10px; background:#00000010; border:1px solid var(--border); border-radius:999px; font-size:12px; color:var(--muted) }
+    .badge{ padding:2px 8px; border:1px solid var(--border); border-radius:6px; color:var(--muted); font-size:12px }
+    .callout{ border-left:4px solid var(--accent); padding:10px 12px; background:color-mix(in srgb, var(--accent) 8%, transparent); border-radius:8px }
+    .warn{ border-left-color:var(--warn); background:color-mix(in srgb, var(--warn) 8%, transparent) }
+    .ok{ border-left-color:var(--ok); background:color-mix(in srgb, var(--ok) 8%, transparent) }
+    .copy{ display:inline-flex; gap:8px; align-items:center }
+    .copy code{ background:transparent; border:1px dashed var(--border); padding:4px 8px; border-radius:6px }
+    .center{ text-align:center }
+    .list-steps li{ margin-bottom:6px }
+    .hamb{ border-radius:10px }
+    @media (max-width: 900px){
+      .hero{ grid-template-columns:1fr }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <nav class="nav">
+      <h1>Tester Iniettore</h1>
+      <div class="spacer"></div>
+      <a class="btn ghost hamb" href="#uso">Come si usa</a>
+      <a class="btn ghost hamb" href="#ota">Updater OTA</a>
+      <a class="btn ghost hamb" href="#contatti">Contatti</a>
+      <button id="theme" class="btn">Tema: Scuro</button>
+    </nav>
+  </header>
+
+  <main class="wrap">
+    <section class="hero">
+      <div>
+        <h2>Strumento compatto per testare iniettori diesel/benzina</h2>
+        <p>Peak&Hold configurabile, profili preimpostati, display OLED bicolore, controllo da web, grafico live e aggiornamenti OTA. Progettato e sviluppato da <b>Stephan Winckler</b>.</p>
+        <div class="row" style="margin:14px 0">
+          <span class="tag">ESP8266</span>
+          <span class="tag">OLED 128×64</span>
+          <span class="tag">Web UI</span>
+          <span class="tag">OTA</span>
+          <span class="tag">LittleFS</span>
+        </div>
+        <div class="row">
+          <a class="btn primary" href="#uso">Inizia subito</a>
+          <a class="btn" href="#scarica">Scarica firmware</a>
+        </div>
+      </div>
+      <div class="svgwrap">
+        <!-- Grafica SVG del dispositivo -->
+        <svg viewBox="0 0 600 360" width="100%" height="auto" role="img" aria-label="Grafica dispositivo Tester Iniettore">
+          <!-- Card -->
+          <defs>
+            <linearGradient id="g1" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#182231"/>
+              <stop offset="100%" stop-color="#0e1724"/>
+            </linearGradient>
+            <linearGradient id="g2" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#ffd34d"/>
+              <stop offset="100%" stop-color="#ffb703"/>
+            </linearGradient>
+            <linearGradient id="g3" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#4fc3f7"/>
+              <stop offset="100%" stop-color="#2196f3"/>
+            </linearGradient>
+            <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000" flood-opacity="0.35"/>
+            </filter>
+          </defs>
+          <rect x="20" y="20" width="560" height="320" rx="22" fill="url(#g1)" stroke="#263246" stroke-width="2" filter="url(#shadow)"/>
+          <!-- Display bicolore -->
+          <rect x="70" y="60" width="300" height="160" rx="8" fill="#0a0f15" stroke="#2a3a55"/>
+          <rect x="70" y="60" width="300" height="40" rx="8" fill="url(#g2)"/>
+          <text x="85" y="85" fill="#0b0b0b" font-size="18" font-family="Segoe UI, Roboto, Arial" font-weight="700">Tester Iniettore</text>
+          <text x="325" y="85" fill="#0b0b0b" font-size="14" font-family="Segoe UI, Roboto, Arial" text-anchor="end">v1.03</text>
+
+          <!-- Righe blu -->
+          <g fill="#cde7ff" font-family="Segoe UI, Roboto, Arial" font-size="14">
+            <text x="85" y="120">Modalità: Preset</text>
+            <text x="85" y="142">OK: Menu   ←/→: Cambia</text>
+            <text x="85" y="164">AP IP: 192.168.4.1</text>
+          </g>
+          <rect x="75" y="150" width="290" height="26" rx="6" fill="rgba(79,195,247,0.18)" stroke="#2a3a55"/>
+
+          <!-- Tasti -->
+          <g>
+            <rect x="420" y="80" width="60" height="60" rx="12" fill="#101b2a" stroke="#2a3a55"/>
+            <text x="450" y="116" fill="#cde7ff" text-anchor="middle" font-size="24">OK</text>
+            <rect x="420" y="150" width="60" height="30" rx="12" fill="#101b2a" stroke="#2a3a55"/><text x="450" y="170" fill="#cde7ff" text-anchor="middle" font-size="16">UP</text>
+            <rect x="420" y="45" width="60" height="30" rx="12" fill="#101b2a" stroke="#2a3a55"/><text x="450" y="64" fill="#cde7ff" text-anchor="middle" font-size="16">DOWN</text>
+            <rect x="355" y="95" width="60" height="30" rx="12" fill="#101b2a" stroke="#2a3a55"/><text x="385" y="115" fill="#cde7ff" text-anchor="middle" font-size="16">LEFT</text>
+            <rect x="485" y="95" width="60" height="30" rx="12" fill="#101b2a" stroke="#2a3a55"/><text x="515" y="115" fill="#cde7ff" text-anchor="middle" font-size="16">RIGHT</text>
+          </g>
+
+          <!-- Connettori -->
+          <g>
+            <rect x="90" y="245" width="80" height="20" rx="6" fill="#101b2a" stroke="#2a3a55"/>
+            <text x="130" y="259" fill="#cde7ff" text-anchor="middle" font-size="12">INJ-</text>
+            <rect x="190" y="245" width="80" height="20" rx="6" fill="#101b2a" stroke="#2a3a55"/>
+            <text x="230" y="259" fill="#cde7ff" text-anchor="middle" font-size="12">+12V</text>
+            <rect x="290" y="245" width="80" height="20" rx="6" fill="#101b2a" stroke="#2a3a55"/>
+            <text x="330" y="259" fill="#cde7ff" text-anchor="middle" font-size="12">GND</text>
+          </g>
+
+          <!-- Icona iniettore -->
+          <g transform="translate(360,230)">
+            <rect x="0" y="0" width="200" height="100" rx="10" fill="#0b121d" stroke="#31425e"/>
+            <rect x="16" y="20" width="84" height="10" rx="3" fill="#2a3a55"/>
+            <rect x="28" y="36" width="70" height="18" rx="4" fill="url(#g3)" />
+            <rect x="104" y="38" width="24" height="14" rx="3" fill="#2a3a55"/>
+            <polygon points="128,38 150,45 128,52" fill="#2a3a55"/>
+            <circle cx="160" cy="45" r="4" fill="#4fc3f7"/>
+            <text x="16" y="80" fill="#9fb0c7" font-size="12">Grafica semplificata dell'iniettore</text>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section id="caratteristiche">
+      <h3>Caratteristiche principali</h3>
+      <div class="grid cols-3">
+        <div class="card">
+          <b>Peak &amp; Hold</b>
+          <p class="muted">Imposta peak (µs), on totale (µs) e hold (%). Profili diesel/benzina inclusi.</p>
+        </div>
+        <div class="card">
+          <b>Controllo locale + Web</b>
+          <p>Display OLED bicolore con menu animato, più interfaccia web con tasti grandi e mirroring.</p>
+        </div>
+        <div class="card">
+          <b>OTA Update</b>
+          <p>Aggiornamenti firmware tramite URL (GitHub Pages o server locale), senza aprire il box.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="uso">
+      <h3>Come si usa (rapido)</h3>
+      <div class="grid cols-2">
+        <div class="card">
+          <ol class="list-steps">
+            <li>Alimenta il dispositivo (5V USB-C → ESP8266, driver iniettore su 12V separato).</li>
+            <li>Connetti l’iniettore: positivo fisso su +12V, comando su INJ- (l’uscita dà impulsi a massa).</li>
+            <li>Collegati alla rete Wi-Fi <span class="badge">TesterIniettore</span> (open).</li>
+            <li>Apri <code class="mono">http://192.168.4.1/</code> per usare la Web UI.</li>
+            <li>Scegli un profilo o “Manuale”, imposta frequenza/impulsi, premi <b>OK/Start</b>.</li>
+          </ol>
+          <div class="callout ok"><b>Sicurezza:</b> usa un alimentatore 12V adeguato e dissipatore sul driver MOSFET. Tieni conto delle correnti di picco.</div>
+        </div>
+        <div class="card">
+          <b>Schema collegamenti (logica):</b>
+          <ul>
+            <li>ESP8266 → Gate driver/MOSFET → INJ- (massa modulata)</li>
+            <li>INJ+ → +12V costante</li>
+            <li>Comando: peak µs a 100% poi hold PWM (%) fino a fine on</li>
+            <li>Frequenza: 1–50 Hz (a seconda dei test)</li>
+          </ul>
+          <p class="muted">Sul dispositivo fisico è presente il display con header giallo e area blu, e tasti UP/DOWN/LEFT/RIGHT/OK.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="ota">
+      <h3>Updater OTA</h3>
+      <div class="grid cols-2">
+        <div class="card">
+          <p><b>1)</b> Compila il firmware in Arduino IDE: <i>Sketch → Export compiled Binary</i> → ottieni <code class="mono">firmware.bin</code>.</p>
+          <p><b>2)</b> Pubblica il bin su GitHub Pages o su un tuo server. Esempio URL:</p>
+          <div class="copy"><code class="mono">https://TUO-UTENTE.github.io/testeriniettore/firmware.bin</code></div>
+          <p><b>3)</b> Nella Web UI vai su <i>OTA Update</i>, incolla l’URL e premi <b>Aggiorna ora</b>.</p>
+          <div class="callout"><b>Nota:</b> seleziona in Board Options un layout Flash con area OTA sufficiente (es. 4M, FS 1–2MB, OTA ~1019KB).</div>
+        </div>
+        <div class="card">
+          <p><b>Connessione a Internet (STA):</b></p>
+          <ol>
+            <li>In Web UI → <i>Wi-Fi Internet (STA)</i> → inserisci SSID e password.</li>
+            <li>Imposta la modalità rete in <i>Info Rete</i> → <b>AP+STA</b>.</li>
+            <li>Controlla l’IP STA e ripeti l’OTA.</li>
+          </ol>
+          <div class="callout warn"><b>Se fallisce:</b> verifica URL raggiungibile, dimensione bin &lt; limite OTA, e che l’ESP sia in AP+STA connettendosi alla tua rete.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="scarica">
+      <h3>Download &amp; repository</h3>
+      <div class="card">
+        <p>
+          Repo del progetto: 
+          <a href="https://github.com/wincklers85/testeriniettore" target="_blank" rel="noopener">github.com/wincklers85/testeriniettore</a>
+        </p>
+        <p>
+          Firmware compilato:
+          <!-- TODO: incolla l’URL reale del tuo firmware.bin -->
+          <a class="btn primary" href="https://wincklers85.github.io/testeriniettore/firmware.bin">Scarica firmware.bin</a>
+        </p>
+        <p class="muted">Suggerimento: usa le <i>GitHub Releases</i> per versionare il firmware e tenerne traccia.</p>
+      </div>
+    </section>
+
+    <section id="contatti">
+      <h3>Contatti &amp; come averne uno</h3>
+      <div class="grid cols-2">
+        <div class="card">
+          <p><b>Creato da:</b> Stephan Winckler</p>
+          <p>
+            <!-- TODO: inserisci i tuoi recapiti reali -->
+            Telefono/WhatsApp: <a href="tel:+39XXXXXXXXXX">+39&nbsp;XXXXXXXXXX</a><br>
+            Email: <a href="mailto:tuo.nome@example.com">tuo.nome@example.com</a>
+          </p>
+          <p>
+            Vuoi un’unità pronta all’uso o personalizzata? Scrivimi: posso prepararla con cablaggi, morsetti e profili preimpostati in base ai tuoi iniettori.
+          </p>
+        </div>
+        <div class="card">
+          <p><b>Opzioni di fornitura</b></p>
+          <ul>
+            <li>Kit <i>DIY</i> (solo PCB + BOM)</li>
+            <li>Unità assemblata (collaudo base)</li>
+            <li>Profilazione su richiesta (benzina/diesel specifici)</li>
+          </ul>
+          <p class="muted">Tempi e costi variano in base alle opzioni scelte e alla disponibilità componenti.</p>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="callout">
+        <b>Disclaimer:</b> Prodotto destinato a test su banco. L’uso su veicolo è a tuo rischio. Verifica sempre la corretta dissipazione e protezioni (TVS, diodi, fusibili).
+      </div>
+    </section>
+
+    <section class="footer center">
+      <div>© <span id="yr"></span> Stephan Winckler — Tutti i diritti riservati</div>
+      <div style="margin-top:6px">
+        <a class="pill" href="#caratteristiche">Caratteristiche</a>
+        <a class="pill" href="#uso">Uso</a>
+        <a class="pill" href="#ota">OTA</a>
+        <a class="pill" href="#contatti">Contatti</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    // Tema chiaro/scuro
+    const btn = document.getElementById('theme');
+    const lsKey = 'ti_theme';
+    const apply = (t) => {
+      document.body.classList.toggle('light', t === 'light');
+      btn.textContent = 'Tema: ' + (t === 'light' ? 'Chiaro' : 'Scuro');
+    };
+    let theme = localStorage.getItem(lsKey) || 'dark';
+    apply(theme);
+    btn.onclick = () => {
+      theme = (theme === 'dark') ? 'light' : 'dark';
+      localStorage.setItem(lsKey, theme);
+      apply(theme);
+    };
+    // anno footer
+    document.getElementById('yr').textContent = new Date().getFullYear();
+  </script>
+</body>
+</html>
